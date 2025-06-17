@@ -1,3 +1,5 @@
+using System.Reflection;
+using XyzLibrary.Repositorys;
 using XyzModels;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -5,20 +7,29 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 builder.Services.AddControllers();
 
-// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
-
-//en Net 9 ya no viene en la plantilla Swagger asi que se debe agregar
-//builder.Services.AddOpenApi();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var EnviromentVariable = new EnvironmentVariable
+var enviromentVariable = new EnvironmentVariable
 {
 	hostDb = Environment.GetEnvironmentVariable("HOST_VARIABLE"),
 	databaseNameDb = Environment.GetEnvironmentVariable("DATABASE_VARIABLE"),
 	usernameDb = Environment.GetEnvironmentVariable("USERNAME_VARIABLE"),
 	passwordDb = Environment.GetEnvironmentVariable("PASSWORD_VARIABLE"),
 };
+
+// Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
+
+//en Net 9 ya no viene en la plantilla Swagger asi que se debe agregar
+//builder.Services.AddOpenApi();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen(c => 
+{
+	var xmlFile = $"{Assembly.GetExecutingAssembly().GetName().Name}.xml";
+	var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
+	c.IncludeXmlComments(xmlPath);
+});
+
+builder.Services.AddSingleton(enviromentVariable);
+builder.Services.AddTransient<IDocumentsRepository, DocumentsRepository>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.

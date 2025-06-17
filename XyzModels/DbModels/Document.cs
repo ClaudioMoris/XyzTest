@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace XyzModels.DbModels
 {
-	class Document
+	public class Document
 	{
 		public long Id { get; set; }
 		public string? Name { get; set; }

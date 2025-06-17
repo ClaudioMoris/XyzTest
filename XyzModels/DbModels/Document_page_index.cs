@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace XyzModels.DbModels
 {
-    class Document_page_index
+    public class Document_page_index
     {
 		public long Id { get; set; }
 		public long Document_id { get; set; }
