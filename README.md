@@ -1,16 +1,24 @@
-# 🌐 API XyzTest - PostgreSQL
+# 🌐 API XyzTest
 
 Esta API fue desarrollada como parte de una **prueba técnica** con fines de evaluación laboral.  
 Está construida en .NET y conectada a una base de datos PostgreSQL, y puede ser desplegada en cualquier entorno compatible.
 
-## 📋 Requisitos
+### 📘 Documentación de la API (Swagger)
+
+Esta API incluye documentación interactiva generada con **Swagger**. Puedes acceder a ella desde la siguiente URL:
+```
+https://{Tu URL o IP}/swagger/index.html
+```
+---
+
+### 📋 Requisitos
 
 - [.NET SDK](https://dotnet.microsoft.com/download) (versión Utilizada: `9.0`)
 - PostgreSQL instalado y con una base de datos creada (versión Utilizada: `17`)
 
 ---
 
-## 🗃️ Configuración de Base de Datos
+### 🗃️ Configuración de Base de Datos
 
 Antes de iniciar la API, debes tener una base de datos PostgreSQL creada manualmente. Puedes utilizar el nombre, usuario y contraseña que desees, pero estos deben coincidir con las variables de entorno que configurarás.
 
@@ -25,7 +33,7 @@ Antes de iniciar la API, debes tener una base de datos PostgreSQL creada manualm
 - En texto plano : **[BaseDeDatos.txt](https://github.com/user-attachments/files/20789874/dbData.txt)**
 - Archivo SQL : **[BaseDeDatos.sql](https://drive.google.com/file/d/1rPJCRo1LcPMDbBcrb_O28LbSaTTyjBFH/view?usp=sharing)**
 ---
-## 🔐 Variables de Entorno
+### 🔐 Variables de Entorno
 
 La API utiliza las siguientes variables de entorno para conectarse a la base de datos:
 
