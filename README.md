@@ -1,6 +1,7 @@
 # 🌐 API XyzTest - PostgreSQL
 
-Esta API está diseñada para ejecutarse en cualquier entorno compatible con .NET, siempre que se configuren correctamente las variables de entorno y exista una base de datos PostgreSQL activa.
+Esta API fue desarrollada como parte de una **prueba técnica** con fines de evaluación laboral.  
+Está construida en .NET y conectada a una base de datos PostgreSQL, y puede ser desplegada en cualquier entorno compatible.
 
 ## 📋 Requisitos
 
