@@ -7,17 +7,33 @@ using XyzModels.DbModels.Views;
 namespace XyzLibrary.Repositorys
 {
 	public interface IDocumentsRepository
-	{
+	{   /// <summary>
+		/// Crea un documento y sus índices asociados, Requiere <see cref="XyzModels.DbModels.Views.CreateDocument"/>
+		/// </summary>
 		Task<Document> CreateDocument(CreateDocument createDocument);
+		/// <summary>
+		/// Desactiva un documento y borra los índices asociados
+		/// </summary>
 		Task<Document> DeleteDocument(long id);
+		/// <summary>
+		/// Busca un Documento y sus índices por el ID
+		/// </summary>
 		Task<DocumentViewModel> SearchById(long id);
+		/// <summary>
+		/// Busca un documento y sus índices por una serie de filtros, retorna la mayor cantidad de coincidencias posibles,
+		/// Requiere <see cref="FilterDocuments"/>
+		/// </summary>
 		Task<DocumentPaginated> SearchDocumentByFilters(FilterDocuments filterDocuments, int rows);
+		/// <summary>
+		/// Actualiza un documento y remplaza todos sus indices por los proporcionados,
+		/// Requiere <see cref="XyzModels.DbModels.Views.UpdateDocument"/>
+		/// </summary>
 		Task<Document> UpdateDocument(UpdateDocument updateDocument);
 	}
 	public class DocumentsRepository : IDocumentsRepository
 	{
 		private readonly string connectionString;
-		public DocumentsRepository(EnvironmentVariable environmentVariable)
+		public DocumentsRepository(EnvironmentVariable environmentVariable)//obtencion de las variables de entorno para crear la cadena de conexion a bd
 		{
 			connectionString = $"Host={environmentVariable.hostDb};Database={environmentVariable.databaseNameDb};Username={environmentVariable.usernameDb};Password={environmentVariable.passwordDb}";
 			if (string.IsNullOrEmpty(connectionString))
@@ -26,9 +42,6 @@ namespace XyzLibrary.Repositorys
 			}
 
 		}
-		/*
-		 * busca un documento y lo retorna juntos con sus indices
-		 */
 		public async Task<DocumentViewModel> SearchById(long id)
 		{
 			using var conn = new NpgsqlConnection(connectionString);
@@ -48,9 +61,7 @@ namespace XyzLibrary.Repositorys
 
 			return resultViewModel;
 
-
 		}
-
 		public async Task<DocumentPaginated> SearchDocumentByFilters(FilterDocuments filterDocuments, int rows)
 		{
 			//por defecto quedo en 10 dado el requerimiento(usualmente se pasaria por la request para que se pudiera mostrar un item "catidad por pagina")
@@ -75,7 +86,7 @@ namespace XyzLibrary.Repositorys
 																 where (id = @Id or serial_code = @Serial_code or publication_code = @Publication_code 
 																 or lower(author_full_name) like lower(CONCAT('%', @AuthorOrEmail, '%')) or lower(author_email) like lower(CONCAT('%', @AuthorOrEmail, '%'))) and active = true
 																 order by id offset @offset rows fetch next @rows rows only", filtersCustom);
-
+			//se calculan y se declara una variable con la clase para retornar
 			var documentPaginated = new DocumentPaginated
 			{
 				Page = filterDocuments.Page,
@@ -123,7 +134,6 @@ namespace XyzLibrary.Repositorys
 			}
 			return savedDocument;
 		}
-
 		public async Task<Document> UpdateDocument(UpdateDocument updateDocument)
 		{
 			using var conn = new NpgsqlConnection(connectionString);

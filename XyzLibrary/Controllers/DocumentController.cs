@@ -28,6 +28,11 @@ namespace XyzLibrary.Controllers
 		 * En un caso normal, quedaría por ruta el ID que desearía ver, por ejemplo: https://{tuURL}/Document/SearchById/1
 		 */
 		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest(ModelState);
+			}
+			//se valida que el id venga en json
 			if (requestId.Id == 0)
 			{
 				var response = new ErrorResponse
@@ -38,7 +43,7 @@ namespace XyzLibrary.Controllers
 				};
 				return BadRequest(response);
 			}
-
+			//busca por el id ingresado
 			var resultData = await _documentsRepository.SearchById(requestId.Id);
 
 			if (resultData == null)
@@ -91,7 +96,7 @@ namespace XyzLibrary.Controllers
 			{
 				return BadRequest(ModelState);
 			}
-
+			//valida que si viene sin índices asociados retorne error
 			if (document.Pages.Count() == 0)
 			{
 				var response = new ErrorResponse
@@ -102,7 +107,7 @@ namespace XyzLibrary.Controllers
 				};
 				return BadRequest(response);
 			}
-
+			//procede a crear el documento
 			var responseDocument = await _documentsRepository.CreateDocument(document);
 			if (responseDocument == null)
 			{
@@ -174,6 +179,11 @@ namespace XyzLibrary.Controllers
 		[HttpDelete("DeleteDocument")]
 		public async Task<IActionResult> DeleteDocument(RequestId requestId)
 		{
+			if (!ModelState.IsValid)
+			{
+				return BadRequest(ModelState);
+			}
+			//se valida que el id venga en json
 			if (requestId.Id == 0)
 			{
 				var response = new ErrorResponse
@@ -184,7 +194,7 @@ namespace XyzLibrary.Controllers
 				};
 				return BadRequest(response);
 			}
-
+			//procede a borrar el documento (Desactivar) y borrar los índices.
 			var deletedDocument = await _documentsRepository.DeleteDocument(requestId.Id);
 			if (deletedDocument == null) 
 			{
