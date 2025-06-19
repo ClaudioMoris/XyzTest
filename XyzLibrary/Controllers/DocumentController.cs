@@ -13,11 +13,13 @@ namespace XyzLibrary.Controllers
 	public class DocumentController : Controller
 	{
 		private readonly IDocumentsRepository _documentsRepository;
-		public DocumentController(IDocumentsRepository documentsRepository)
+		private readonly IToolsRepository _toolsRepository;
+
+		public DocumentController(IDocumentsRepository documentsRepository, IToolsRepository toolsRepository)
 		{
 			_documentsRepository = documentsRepository;
+			_toolsRepository = toolsRepository;
 		}
-
 		/// <summary>
 		/// Busca un documento por su ID.
 		/// </summary>
@@ -96,6 +98,32 @@ namespace XyzLibrary.Controllers
 			{
 				return BadRequest(ModelState);
 			}
+
+			//validacion codigo de publicacion
+			var pubValidation = _toolsRepository.ValidatePublicationCode(document.document.Publication_code);
+			if (pubValidation == false)
+			{
+				var response = new ErrorResponse
+				{
+					StatusCode = StatusCodes.Status400BadRequest,
+					Message = "El codigo de Publicacion no se ingreso en un formato valido",
+					Detail = "Revisa el codigo de publicacion y ingresa en un formato valido EJ: “ISO-27001” , “Ley N° 19.628”, “P-01.20250614”",
+				};
+				return BadRequest(response);
+			}
+			//validacion HEX code
+			var hexValidation = _toolsRepository.ValidateHexCode(document.document.Serial_code);
+			if (hexValidation == false)
+			{
+				var response = new ErrorResponse
+				{
+					StatusCode = StatusCodes.Status400BadRequest,
+					Message = "El codigo de Serie no se ingreso en un formato invalido",
+					Detail = "Revisa el codigo de Serie y ingresa en un formato hexadecimal",
+				};
+				return BadRequest(response);
+			}
+
 			//valida que si viene sin índices asociados retorne error
 			if (document.Pages.Count() == 0)
 			{
@@ -134,6 +162,33 @@ namespace XyzLibrary.Controllers
 			{
 				return BadRequest(ModelState);
 			}
+
+			//validacion codigo de publicacion
+			var pubValidation = _toolsRepository.ValidatePublicationCode(document.document.Publication_code);
+			if (pubValidation == false)
+			{
+				var response = new ErrorResponse
+				{
+					StatusCode = StatusCodes.Status400BadRequest,
+					Message = "El codigo de Publicacion no se ingreso en un formato valido",
+					Detail = "Revisa el codigo de publicacion y ingresa en un formato valido EJ: “ISO-27001” , “Ley N° 19.628”, “P-01.20250614”",
+				};
+				return BadRequest(response);
+			}
+
+			//validacion HEX code
+			var hexValidation = _toolsRepository.ValidateHexCode(document.document.Serial_code);
+			if (hexValidation == false)
+			{
+				var response = new ErrorResponse
+				{
+					StatusCode = StatusCodes.Status400BadRequest,
+					Message = "El codigo de Serie no se ingreso en un formato valido",
+					Detail = "Revisa el codigo de Serie y ingresa en un formato hexadecimal",
+				};
+				return BadRequest(response);
+			}
+
 			//valida que vaya un id, dado que si no va no encontrara ningun registro que editar
 			if (document.document.Id == 0)
 			{

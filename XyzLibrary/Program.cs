@@ -29,6 +29,7 @@ builder.Services.AddSwaggerGen(c =>
 
 builder.Services.AddSingleton(enviromentVariable);
 builder.Services.AddTransient<IDocumentsRepository, DocumentsRepository>();
+builder.Services.AddTransient<IToolsRepository, ToolsRepository>();
 
 var app = builder.Build();
 

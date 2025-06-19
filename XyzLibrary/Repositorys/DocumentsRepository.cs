@@ -1,5 +1,6 @@
 ﻿using Dapper;
 using Npgsql;
+using System.Linq.Expressions;
 using XyzModels;
 using XyzModels.DbModels;
 using XyzModels.DbModels.Views;
@@ -98,11 +99,8 @@ namespace XyzLibrary.Repositorys
 			return documentPaginated;
 		}
 
-
-		public async Task<Document> CreateDocument(CreateDocument createDocument)
+		public async Task<Document> CreateDocument(CreateDocument createDocument) // metodo modificado con la ayuda de ChatGPT (https://chatgpt.com/share/68539212-62e4-800a-87ea-491f45d8ec7f)
 		{
-			using var conn = new NpgsqlConnection(connectionString);
-
 			var documentParam = new//objeto para ser generado el documento
 			{
 				createDocument.document.Name,
@@ -116,77 +114,106 @@ namespace XyzLibrary.Repositorys
 
 			};
 
-			var savedDocument = await conn.QueryFirstOrDefaultAsync<Document>(@"insert into document (name,description,author_full_name,author_email,serial_code,publication_code,created_at,active)
-																		values(@Name,@Description,@Author_full_name,@Author_email,@Serial_code,@Publication_code,@Created_at,@active) RETURNING*", documentParam);
-			if (savedDocument == null) //si es null retorna para devolver error en controller
+			using var conn = new NpgsqlConnection(connectionString);
+			await conn.OpenAsync();//se abre la conexion para solicitud con posible rollBack, apra evitar errores en bd
+
+			using var transaction = await conn.BeginTransactionAsync();//transaction guarda la transaccion para confirmarla o volverla atras en bd segun resultado
+
+			try
 			{
+				var savedDocument = await conn.QueryFirstOrDefaultAsync<Document>(@"insert into document (name,description,author_full_name,author_email,serial_code,publication_code,created_at,active)
+																		values(@Name,@Description,@Author_full_name,@Author_email,@Serial_code,@Publication_code,@Created_at,@active) RETURNING*", documentParam, transaction);
+				if (savedDocument == null) //si es null retorna para devolver error en controller
+				{
+					return savedDocument;
+				}
+
+				if (createDocument.Pages.Count() > 0) //si es mayo a 0 los indices ingresa para asignarles un id y posteriormente ser guardados
+				{
+					foreach (var page in createDocument.Pages)
+					{
+						page.Document_id = savedDocument.Id;
+						page.Created_at = DateTime.Now;
+					}                                                                  
+					var savedPages = await conn.ExecuteAsync(@"insert into document_page_index (document_id,name,page,created_at) values(@Document_id,@Name,@Page,@Created_at)", createDocument.Pages, transaction);
+				}
+				await transaction.CommitAsync();//confirma los cambios en bd
 				return savedDocument;
 			}
-
-			if (createDocument.Pages.Count() > 0) //si es mayo a 0 los indices ingresa para asignarles un id y posteriormente ser guardados
+			catch (Exception ex)
 			{
-				foreach (var page in createDocument.Pages)
-				{
-					page.Document_id = savedDocument.Id;
-					page.Created_at = DateTime.Now;
-				}
-				var savedPages = await conn.ExecuteAsync(@"insert into document_page_index (document_id,name,page,created_at) values(@Document_id,@Name,@Page,@Created_at)", createDocument.Pages);
+				await transaction.RollbackAsync();//vuelve atras todas las transacciones en espera
+				return null;
 			}
-			return savedDocument;
 		}
 		public async Task<Document> UpdateDocument(UpdateDocument updateDocument)
 		{
 			using var conn = new NpgsqlConnection(connectionString);
-			//busca el registro y lo obtiene para modificarlo si no esta eliminado
-			var resultDocument = await conn.QueryFirstOrDefaultAsync<Document>("select * from document where id = @id and active = true", new { updateDocument.document.Id });
-			if (resultDocument == null)
+			await conn.OpenAsync();//se abre la conexion para solicitud con posible rollBack, apra evitar errores en bd
+			using var transaction = await conn.BeginTransactionAsync();//transaction guarda la transaccion para confirmarla o volverla atras en bd segun resultado
+
+			try
 			{
-				return resultDocument;
-			}
-			resultDocument.Name = updateDocument.document.Name;
-			resultDocument.Description = updateDocument.document.Description;
-			resultDocument.Author_full_name = updateDocument.document.Author_full_name;
-			resultDocument.Author_email = updateDocument.document.Author_email;
-			resultDocument.Serial_code = updateDocument.document.Serial_code;
-			resultDocument.Publication_code = updateDocument.document.Publication_code;
-			resultDocument.Updated_at = DateTime.Now;
+				//busca el registro y lo obtiene para modificarlo si no esta eliminado
+				var resultDocument = await conn.QueryFirstOrDefaultAsync<Document>("select * from document where id = @id and active = true", new { updateDocument.document.Id }, transaction);
+				if (resultDocument == null)
+				{
+					return resultDocument;
+				}
+				resultDocument.Name = updateDocument.document.Name;
+				resultDocument.Description = updateDocument.document.Description;
+				resultDocument.Author_full_name = updateDocument.document.Author_full_name;
+				resultDocument.Author_email = updateDocument.document.Author_email;
+				resultDocument.Serial_code = updateDocument.document.Serial_code;
+				resultDocument.Publication_code = updateDocument.document.Publication_code;
+				resultDocument.Updated_at = DateTime.Now;
 
 
-			var updatedDocument = await conn.QueryFirstOrDefaultAsync<Document>(@"update document 
+				var updatedDocument = await conn.QueryFirstOrDefaultAsync<Document>(@"update document 
 																				  set name = @Name, description = @Description, author_full_name = @Author_full_name, 
 																				  author_email = @Author_email, serial_code = @Serial_code, publication_code = @Publication_code,
-																				  updated_at = @Updated_at where id = @Id RETURNING*", resultDocument);
-			//si es null retorna para devolver error en controller
-			if (updatedDocument == null)
-			{
+																				  updated_at = @Updated_at where id = @Id RETURNING*", resultDocument, transaction);
+				//si es null retorna para devolver error en controller
+				if (updatedDocument == null)
+				{
+					return updatedDocument;
+				}
+				/*
+				 * se borran todos los indices asociados a un documento
+				 * dado que se valida que se actualizara el docuemnto, para llegar a este paso se debe haber modificado exitosamente
+				 */
+				await conn.ExecuteAsync(@"delete from document_page_index where document_id = @Id", resultDocument, transaction);
+				/*
+				 * si es mayor a 0 los indices ingresa para asignarles un id y posteriormente ser guardados
+				 * ademas se agrega fecha de creacion
+				 */
+				if (updateDocument.Pages.Count() > 0)
+				{
+					foreach (var page in updateDocument.Pages)
+					{
+						page.Document_id = updatedDocument.Id;
+						page.Created_at = DateTime.Now;
+					}
+					var savedPages = await conn.ExecuteAsync(@"insert into document_page_index (document_id,name,page,created_at) values(@Document_id,@Name,@Page,@Created_at)", updateDocument.Pages, transaction);
+				}
+				await transaction.CommitAsync();//confirma los cambios en bd
 				return updatedDocument;
 			}
-			/*
-			 * se borran todos los indices asociados a un documento
-			 * dado que se valida que se actualizara el docuemnto, para llegar a este paso se debe haber modificado exitosamente
-			 */
-			await conn.ExecuteAsync(@"delete from document_page_index where document_id = @Id", resultDocument);
-			/*
-			 * si es mayor a 0 los indices ingresa para asignarles un id y posteriormente ser guardados
-			 * ademas se agrega fecha de creacion
-			 */
-			if (updateDocument.Pages.Count() > 0)
+			catch(Exception ex) 
 			{
-				foreach (var page in updateDocument.Pages)
-				{
-					page.Document_id = updatedDocument.Id;
-					page.Created_at = DateTime.Now;
-				}
-				var savedPages = await conn.ExecuteAsync(@"insert into document_page_index (document_id,name,page,created_at) values(@Document_id,@Name,@Page,@Created_at)", updateDocument.Pages);
+				await transaction.RollbackAsync();//vuelve atras todas las transacciones en espera
+				return null;
 			}
-			return updatedDocument;
 		}
 
 		public async Task<Document> DeleteDocument(long id)
 		{
 			using var conn = new NpgsqlConnection(connectionString);
+
+			DateTime dateTime = DateTime.Now;
+
 			//se desactiva el documento
-			var deletedDocument = await conn.QueryFirstOrDefaultAsync<Document>(@"update document set active = false where id = @id RETURNING*", new { id });
+			var deletedDocument = await conn.QueryFirstOrDefaultAsync<Document>(@"update document set deleted_at = @dateTime, active = false where id = @id RETURNING*", new { id, dateTime });
 			if (deletedDocument == null)
 			{
 				return deletedDocument;
